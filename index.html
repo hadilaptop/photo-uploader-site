@@ -168,11 +168,43 @@
           throw new Error("پاسخ مخزن تصاویر قابل شناسایی نیست.");
         }
 
-        const images = files
-          .filter(file => file.type === "file" &&
-            /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
-            file.download_url)
-          .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
+        let images = [];
+        try {
+          const manifestUrl = "https://raw.githubusercontent.com/" +
+            owner + "/" + repository + "/" + branch + "/uploads.json";
+          const manifestResponse = await fetch(manifestUrl, { cache: "no-store" });
+          if (manifestResponse.ok) {
+            const manifest = await manifestResponse.json();
+            if (!manifest || !Array.isArray(manifest.images)) {
+              throw new Error("ساختار uploads.json معتبر نیست.");
+            }
+            images = manifest.images
+              .filter(item => item && item.name && item.download_url)
+              .sort((a, b) => {
+                const timeA = a.uploaded_at ? Date.parse(a.uploaded_at) : 0;
+                const timeB = b.uploaded_at ? Date.parse(b.uploaded_at) : 0;
+                if (timeA !== timeB) return timeB - timeA;
+                return Number(b.id || 0) - Number(a.id || 0);
+              })
+              .map(item => ({
+                name: item.name,
+                download_url: item.download_url,
+                html_url: item.download_url,
+                uploaded_at: item.uploaded_at,
+                id: item.id
+              }));
+          }
+        } catch (manifestError) {
+          console.warn("خواندن فهرست ترتیبی ممکن نشد؛ از فهرست معمولی GitHub استفاده می‌شود.", manifestError);
+        }
+
+        if (!images.length) {
+          images = files
+            .filter(file => file.type === "file" &&
+              /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
+              file.download_url)
+            .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
+        }
 
         if (!images.length) {
           status.textContent = "هنوز تصویری در پوشه uploads پیدا نشد.";
