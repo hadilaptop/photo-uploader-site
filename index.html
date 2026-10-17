@@ -150,7 +150,7 @@
       return card;
     }
 
-    async function loadGallery() {
+    async function loadGallery(forceDirectoryCheck = false) {
       status.textContent = "در حال به‌روزرسانی فهرست تصاویر…";
       const manifestUrl = "https://raw.githubusercontent.com/" +
         owner + "/" + repository + "/" + branch + "/uploads.json?cacheBust=" + Date.now();
@@ -191,7 +191,7 @@
         }
 
         // فهرست پوشه را هر 60 ثانیه هم بررسی می‌کنیم تا عکس‌هایی که به manifest اضافه نشده‌اند گم نشوند.
-        if (!manifestLoaded || !images.length || Date.now() - lastDirectoryCheck >= 60000) {
+        if (forceDirectoryCheck || !manifestLoaded || !images.length || Date.now() - lastDirectoryCheck >= 60000) {
           try {
             const response = await fetch(apiUrl + "&cacheBust=" + Date.now(), {
               cache: "no-store",
@@ -243,11 +243,11 @@
 
     // اگر صفحه باز باشد، هر 10 ثانیه فهرست را تازه می‌کنیم.
     let galleryRefreshInProgress = false;
-    async function refreshGallery() {
+    async function refreshGallery(forceDirectoryCheck = false) {
       if (galleryRefreshInProgress) return;
       galleryRefreshInProgress = true;
       try {
-        await loadGallery();
+        await loadGallery(forceDirectoryCheck);
       } finally {
         galleryRefreshInProgress = false;
       }
@@ -263,7 +263,7 @@
     refreshButton.type = "button";
     refreshButton.textContent = "به‌روزرسانی گالری";
     refreshButton.style.cssText = "display:block;margin:14px auto 0;padding:9px 16px;border:0;border-radius:8px;background:#e8efff;color:#234ca5;cursor:pointer;font:inherit";
-    refreshButton.addEventListener("click", refreshGallery);
+    refreshButton.addEventListener("click", () => refreshGallery(true));
     document.querySelector("header").appendChild(refreshButton);
 
     loadGallery();
