@@ -7,6 +7,13 @@
       "path": "uploads/stu.png",
       "uploaded_at": "2026-10-17T13:44:38+00:00",
       "download_url": "https://raw.githubusercontent.com/hadilaptop/photo-uploader-site/main/uploads/stu.png"
+    },
+    {
+      "id": 2,
+      "name": "321.png",
+      "path": "uploads/321.png",
+      "uploaded_at": "2026-10-17T13:51:42+00:00",
+      "download_url": "https://raw.githubusercontent.com/hadilaptop/photo-uploader-site/main/uploads/321.png"
     }
   ]
 }
