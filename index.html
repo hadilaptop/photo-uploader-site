@@ -99,6 +99,7 @@
     const branch = "main";
     const gallery = document.getElementById("gallery");
     const status = document.getElementById("status");
+    let lastDirectoryCheck = 0;
 
     function showMessage(message) {
       const box = document.createElement("p");
@@ -189,26 +190,39 @@
           console.warn("خواندن uploads.json ممکن نشد؛ فهرست معمولی GitHub بررسی می‌شود.", manifestError);
         }
 
-        if (!manifestLoaded || !images.length) {
-          const response = await fetch(apiUrl + "&cacheBust=" + Date.now(), {
-            cache: "no-store",
-            headers: { "Accept": "application/vnd.github+json" }
-          });
-          if (!response.ok) {
-            throw new Error(response.status === 403
-              ? "محدودیت موقت درخواست‌های GitHub؛ کمی بعد دوباره امتحان کنید."
-              : "دریافت فهرست تصاویر ناموفق بود (HTTP " + response.status + ").");
+        // فهرست پوشه را هر 60 ثانیه هم بررسی می‌کنیم تا عکس‌هایی که به manifest اضافه نشده‌اند گم نشوند.
+        if (!manifestLoaded || !images.length || Date.now() - lastDirectoryCheck >= 60000) {
+          try {
+            const response = await fetch(apiUrl + "&cacheBust=" + Date.now(), {
+              cache: "no-store",
+              headers: { "Accept": "application/vnd.github+json" }
+            });
+            if (!response.ok) {
+              if (!manifestLoaded || !images.length) {
+                throw new Error(response.status === 403
+                  ? "محدودیت موقت درخواست‌های GitHub؛ کمی بعد دوباره امتحان کنید."
+                  : "دریافت فهرست تصاویر ناموفق بود (HTTP " + response.status + ").");
+              }
+            } else {
+              const files = await response.json();
+              if (!Array.isArray(files)) throw new Error("پاسخ مخزن تصاویر قابل شناسایی نیست.");
+              const directoryImages = files
+                .filter(file => file.type === "file" &&
+                  /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
+                  file.download_url)
+                .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
+              const knownNames = new Set(images.map(item => item.name.toLowerCase()));
+              const unlistedImages = directoryImages.filter(item => !knownNames.has(item.name.toLowerCase()));
+              if (unlistedImages.length) {
+                images = [...unlistedImages, ...images];
+              }
+              if (!images.length) images = directoryImages;
+              lastDirectoryCheck = Date.now();
+            }
+          } catch (directoryError) {
+            if (!manifestLoaded || !images.length) throw directoryError;
+            console.warn("بررسی پوشه GitHub موقتاً ناموفق بود؛ از uploads.json استفاده می‌شود.", directoryError);
           }
-
-          const files = await response.json();
-          if (!Array.isArray(files)) {
-            throw new Error("پاسخ مخزن تصاویر قابل شناسایی نیست.");
-          }
-          images = files
-            .filter(file => file.type === "file" &&
-              /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
-              file.download_url)
-            .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
         }
 
         if (!images.length) {
