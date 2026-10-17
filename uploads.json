@@ -28,6 +28,13 @@
       "path": "uploads/Gemini_Generated_Image_uuqmhiuuqmhiuuqm.jpg",
       "uploaded_at": "2026-10-17T13:57:45+00:00",
       "download_url": "https://raw.githubusercontent.com/hadilaptop/photo-uploader-site/main/uploads/Gemini_Generated_Image_uuqmhiuuqmhiuuqm.jpg"
+    },
+    {
+      "id": 5,
+      "name": "photo_1_2026-10-17_16-47-58.jpg",
+      "path": "uploads/photo_1_2026-10-17_16-47-58.jpg",
+      "uploaded_at": "2026-10-17T13:58:41+00:00",
+      "download_url": "https://raw.githubusercontent.com/hadilaptop/photo-uploader-site/main/uploads/photo_1_2026-10-17_16-47-58.jpg"
     }
   ]
 }
