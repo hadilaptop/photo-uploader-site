@@ -150,28 +150,18 @@
     }
 
     async function loadGallery() {
+      status.textContent = "در حال به‌روزرسانی فهرست تصاویر…";
+      const manifestUrl = "https://raw.githubusercontent.com/" +
+        owner + "/" + repository + "/" + branch + "/uploads.json?cacheBust=" + Date.now();
       const apiUrl = "https://api.github.com/repos/" + owner + "/" + repository +
         "/contents/" + folder + "?ref=" + branch;
 
       try {
-        const response = await fetch(apiUrl, {
-          headers: { "Accept": "application/vnd.github+json" }
-        });
-        if (!response.ok) {
-          throw new Error(response.status === 403
-            ? "محدودیت موقت درخواست‌های GitHub؛ کمی بعد دوباره امتحان کنید."
-            : "دریافت فهرست تصاویر ناموفق بود (HTTP " + response.status + ").");
-        }
-
-        const files = await response.json();
-        if (!Array.isArray(files)) {
-          throw new Error("پاسخ مخزن تصاویر قابل شناسایی نیست.");
-        }
-
         let images = [];
+        let manifestLoaded = false;
+
+        // ابتدا manifest را می‌خوانیم تا ترتیب و کش API گیت‌هاب مانع نمایش عکس جدید نشود.
         try {
-          const manifestUrl = "https://raw.githubusercontent.com/" +
-            owner + "/" + repository + "/" + branch + "/uploads.json";
           const manifestResponse = await fetch(manifestUrl, { cache: "no-store" });
           if (manifestResponse.ok) {
             const manifest = await manifestResponse.json();
@@ -193,15 +183,30 @@
                 uploaded_at: item.uploaded_at,
                 id: item.id
               }));
+            manifestLoaded = true;
           }
         } catch (manifestError) {
-          console.warn("خواندن فهرست ترتیبی ممکن نشد؛ از فهرست معمولی GitHub استفاده می‌شود.", manifestError);
+          console.warn("خواندن uploads.json ممکن نشد؛ فهرست معمولی GitHub بررسی می‌شود.", manifestError);
         }
 
-        if (!images.length) {
+        if (!manifestLoaded || !images.length) {
+          const response = await fetch(apiUrl + "&cacheBust=" + Date.now(), {
+            cache: "no-store",
+            headers: { "Accept": "application/vnd.github+json" }
+          });
+          if (!response.ok) {
+            throw new Error(response.status === 403
+              ? "محدودیت موقت درخواست‌های GitHub؛ کمی بعد دوباره امتحان کنید."
+              : "دریافت فهرست تصاویر ناموفق بود (HTTP " + response.status + ").");
+          }
+
+          const files = await response.json();
+          if (!Array.isArray(files)) {
+            throw new Error("پاسخ مخزن تصاویر قابل شناسایی نیست.");
+          }
           images = files
             .filter(file => file.type === "file" &&
-              /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
+              /\\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
               file.download_url)
             .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
         }
@@ -213,14 +218,39 @@
         }
 
         gallery.replaceChildren(...images.map(makeCard));
-        status.textContent = images.length + " تصویر از مخزن " + repository +
-          " دریافت شد. با اضافه‌شدن تصاویر به پوشه uploads، گالری خودکار به‌روز می‌شود.";
+        status.textContent = images.length + " تصویر دریافت شد؛ آخرین بررسی: " +
+          new Date().toLocaleTimeString("fa-IR");
       } catch (error) {
-        status.textContent = "بارگذاری خودکار تصاویر انجام نشد.";
+        status.textContent = "به‌روزرسانی تصاویر انجام نشد.";
         showMessage((error && error.message ? error.message : "خطای ناشناخته") +
-          " اگر مخزن عمومی است، اتصال به GitHub API و نام پوشه uploads را بررسی کنید.");
+          " اتصال به GitHub و دسترسی مخزن را بررسی کنید.");
       }
     }
+
+    // اگر صفحه باز باشد، هر 30 ثانیه فهرست را تازه می‌کنیم.
+    let galleryRefreshInProgress = false;
+    async function refreshGallery() {
+      if (galleryRefreshInProgress) return;
+      galleryRefreshInProgress = true;
+      try {
+        await loadGallery();
+      } finally {
+        galleryRefreshInProgress = false;
+      }
+    }
+
+    window.addEventListener("focus", refreshGallery);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshGallery();
+    });
+    window.setInterval(refreshGallery, 30000);
+
+    const refreshButton = document.createElement("button");
+    refreshButton.type = "button";
+    refreshButton.textContent = "به‌روزرسانی گالری";
+    refreshButton.style.cssText = "display:block;margin:14px auto 0;padding:9px 16px;border:0;border-radius:8px;background:#e8efff;color:#234ca5;cursor:pointer;font:inherit";
+    refreshButton.addEventListener("click", refreshGallery);
+    document.querySelector("header").appendChild(refreshButton);
 
     loadGallery();
   </script>
