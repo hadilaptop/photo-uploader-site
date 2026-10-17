@@ -199,7 +199,11 @@
               cache: "no-store",
               headers: { "Accept": "application/vnd.github+json" }
             });
-            if (!response.ok) {
+            if (response.status === 404 && !manifestLoaded && !images.length) {
+              // مخزن تازه هنوز پوشه uploads ندارد؛ این وضعیت خطا نیست.
+              discoveredDirectoryImages = [];
+              lastDirectoryCheck = Date.now();
+            } else if (!response.ok) {
               if (!manifestLoaded || !images.length) {
                 throw new Error(response.status === 403
                   ? "محدودیت موقت درخواست‌های GitHub؛ کمی بعد دوباره امتحان کنید."
