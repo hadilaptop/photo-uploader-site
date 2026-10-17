@@ -1,57 +1,196 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>گالری تصاویر</title>
-    <style>
-        body {
-            font-family: Tahoma, Arial;
-            margin: 24px;
-            background: #f5f7fb;
-            color: #202938
-        }
-
-        h1 {
-            text-align: center
-        }
-
-        .gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-            gap: 14px
-        }
-
-        .item {
-            background: white;
-            padding: 10px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px #0001
-        }
-
-        .item img {
-            width: 20%;
-            height: 50px;
-            object-fit: contain
-        }
-
-        .name {
-            font-size: 12px;
-            overflow-wrap: anywhere
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>گالری تصاویر</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Tahoma, Arial, sans-serif;
+      background: #f5f7fb;
+      color: #202938;
+    }
+    header { max-width: 1200px; margin: 0 auto 24px; text-align: center; }
+    h1 { margin: 0 0 10px; font-size: clamp(24px, 4vw, 34px); }
+    #status { margin: 0; color: #64748b; font-size: 14px; overflow-wrap: anywhere; }
+    .gallery {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+      gap: 18px;
+    }
+    .item {
+      min-width: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      background: #fff;
+      border: 1px solid #e5eaf2;
+      border-radius: 14px;
+      box-shadow: 0 3px 14px #1822300b;
+    }
+    .preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+      max-height: 320px;
+      overflow: hidden;
+      border-radius: 9px;
+      background: #eef2f7;
+    }
+    .preview img {
+      display: block;
+      width: 100%;
+      height: 240px;
+      object-fit: contain;
+    }
+    .name {
+      direction: ltr;
+      text-align: left;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+      color: #334155;
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .actions a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #e8efff;
+      color: #234ca5;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .actions a:hover { background: #dbe7ff; }
+    .empty {
+      grid-column: 1 / -1;
+      padding: 24px;
+      border-radius: 12px;
+      background: white;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 480px) { body { padding: 16px; } .gallery { grid-template-columns: 1fr; } }
+  </style>
 </head>
-
 <body>
-    <div class="gallery"><a class="item" href="./images/test.png" ><img
-                src="./images/test.png" alt="تصویر آزمایشی">
-            <div class="name">images/test.png</div>
-            <img
-                src="./images/stu.png" alt="تصویر آزمایشی">
-            <div class="name">images/test.png</div>
-        </a></div>
-  
-</body>
+  <header>
+    <h1>گالری تصاویر</h1>
+    <p id="status" role="status" aria-live="polite">در حال دریافت فهرست تصاویر…</p>
+  </header>
+  <main id="gallery" class="gallery"></main>
 
+  <script>
+    const owner = "hadilaptop";
+    const repository = "photo-uploader-images";
+    const folder = "uploads";
+    const branch = "main";
+    const gallery = document.getElementById("gallery");
+    const status = document.getElementById("status");
+
+    function showMessage(message) {
+      const box = document.createElement("p");
+      box.className = "empty";
+      box.textContent = message;
+      gallery.replaceChildren(box);
+    }
+
+    function makeCard(file) {
+      const card = document.createElement("article");
+      card.className = "item";
+
+      const previewLink = document.createElement("a");
+      previewLink.className = "preview";
+      previewLink.href = file.html_url || file.download_url;
+      previewLink.target = "_blank";
+      previewLink.rel = "noopener noreferrer";
+      previewLink.setAttribute("aria-label", "بازکردن تصویر " + file.name);
+
+      const img = document.createElement("img");
+      img.src = file.download_url;
+      img.alt = file.name;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.addEventListener("error", () => {
+        previewLink.replaceChildren();
+        const fallback = document.createElement("span");
+        fallback.textContent = "نمایش تصویر ممکن نیست";
+        previewLink.appendChild(fallback);
+      }, { once: true });
+      previewLink.appendChild(img);
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = file.name;
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      const directLink = document.createElement("a");
+      directLink.href = file.download_url;
+      directLink.target = "_blank";
+      directLink.rel = "noopener noreferrer";
+      directLink.textContent = "بازکردن تصویر اصلی";
+      directLink.setAttribute("aria-label", "بازکردن تصویر اصلی " + file.name);
+      actions.appendChild(directLink);
+
+      card.append(previewLink, name, actions);
+      return card;
+    }
+
+    async function loadGallery() {
+      const apiUrl = "https://api.github.com/repos/" + owner + "/" + repository +
+        "/contents/" + folder + "?ref=" + branch;
+
+      try {
+        const response = await fetch(apiUrl, {
+          headers: { "Accept": "application/vnd.github+json" }
+        });
+        if (!response.ok) {
+          throw new Error(response.status === 403
+            ? "محدودیت موقت درخواست‌های GitHub؛ کمی بعد دوباره امتحان کنید."
+            : "دریافت فهرست تصاویر ناموفق بود (HTTP " + response.status + ").");
+        }
+
+        const files = await response.json();
+        if (!Array.isArray(files)) {
+          throw new Error("پاسخ مخزن تصاویر قابل شناسایی نیست.");
+        }
+
+        const images = files
+          .filter(file => file.type === "file" &&
+            /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
+            file.download_url)
+          .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
+
+        if (!images.length) {
+          status.textContent = "هنوز تصویری در پوشه uploads پیدا نشد.";
+          showMessage("تصویری برای نمایش وجود ندارد.");
+          return;
+        }
+
+        gallery.replaceChildren(...images.map(makeCard));
+        status.textContent = images.length + " تصویر از مخزن " + repository +
+          " دریافت شد. با اضافه‌شدن تصاویر به پوشه uploads، گالری خودکار به‌روز می‌شود.";
+      } catch (error) {
+        status.textContent = "بارگذاری خودکار تصاویر انجام نشد.";
+        showMessage((error && error.message ? error.message : "خطای ناشناخته") +
+          " اگر مخزن عمومی است، اتصال به GitHub API و نام پوشه uploads را بررسی کنید.");
+      }
+    }
+
+    loadGallery();
+  </script>
+</body>
 </html>
