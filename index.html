@@ -100,6 +100,8 @@
     const gallery = document.getElementById("gallery");
     const status = document.getElementById("status");
     let lastDirectoryCheck = 0;
+    // تصاویر پیدا‌شده در پوشه را بین به‌روزرسانی‌ها نگه می‌داریم تا از گالری حذف نشوند.
+    let discoveredDirectoryImages = [];
 
     function showMessage(message) {
       const box = document.createElement("p");
@@ -211,11 +213,9 @@
                   /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
                   file.download_url)
                 .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
-              const knownNames = new Set(images.map(item => item.name.toLowerCase()));
-              const unlistedImages = directoryImages.filter(item => !knownNames.has(item.name.toLowerCase()));
-              if (unlistedImages.length) {
-                images = [...unlistedImages, ...images];
-              }
+              const discoveredByName = new Map(discoveredDirectoryImages.map(item => [item.name.toLowerCase(), item]));
+              for (const file of directoryImages) discoveredByName.set(file.name.toLowerCase(), file);
+              discoveredDirectoryImages = [...discoveredByName.values()];
               if (!images.length) images = directoryImages;
               lastDirectoryCheck = Date.now();
             }
@@ -224,6 +224,13 @@
             console.warn("بررسی پوشه GitHub موقتاً ناموفق بود؛ از uploads.json استفاده می‌شود.", directoryError);
           }
         }
+
+        // تصاویر واقعی پوشه را با manifest ادغام می‌کنیم؛ در refresh بعدی هم باقی می‌مانند.
+        const manifestNames = new Set(images.map(item => item.name.toLowerCase()));
+        const missingFromManifest = discoveredDirectoryImages
+          .filter(item => !manifestNames.has(item.name.toLowerCase()))
+          .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
+        images = [...missingFromManifest, ...images];
 
         if (!images.length) {
           status.textContent = "هنوز تصویری در پوشه uploads پیدا نشد.";
