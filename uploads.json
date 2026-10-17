@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "images": [
+    {
+      "id": 1,
+      "name": "stu.png",
+      "path": "uploads/stu.png",
+      "uploaded_at": "2026-10-17T13:44:38+00:00",
+      "download_url": "https://raw.githubusercontent.com/hadilaptop/photo-uploader-site/main/uploads/stu.png"
+    }
+  ]
+}
