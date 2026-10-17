@@ -206,7 +206,7 @@
           }
           images = files
             .filter(file => file.type === "file" &&
-              /\\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
+              /\.(avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(file.name) &&
               file.download_url)
             .sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
         }
@@ -227,7 +227,7 @@
       }
     }
 
-    // اگر صفحه باز باشد، هر 30 ثانیه فهرست را تازه می‌کنیم.
+    // اگر صفحه باز باشد، هر 10 ثانیه فهرست را تازه می‌کنیم.
     let galleryRefreshInProgress = false;
     async function refreshGallery() {
       if (galleryRefreshInProgress) return;
@@ -243,7 +243,7 @@
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) refreshGallery();
     });
-    window.setInterval(refreshGallery, 30000);
+    window.setInterval(refreshGallery, 10000);
 
     const refreshButton = document.createElement("button");
     refreshButton.type = "button";
