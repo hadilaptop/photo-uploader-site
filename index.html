@@ -317,11 +317,11 @@
     let base64ObjectUrl = null;
 
     function displayBase64Image(sourceText) {
-      let raw = sourceText.trim().replace(/^\\uFEFF/, "");
-      const dataUrlMatch = raw.match(/^data:image\\/(png|jpeg|jpg|gif|webp|bmp|avif);base64,([\\s\\S]*)$/i);
+      let raw = sourceText.trim().replace(/^\uFEFF/, "");
+      const dataUrlMatch = raw.match(/^data:image\/(png|jpeg|jpg|gif|webp|bmp|avif);base64,([\s\S]*)$/i);
       if (dataUrlMatch) raw = dataUrlMatch[2];
-      raw = raw.replace(/^-----BEGIN[^\\n]*-----|-----END[^\\n]*-----$/gm, "")
-        .replace(/\\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
+      raw = raw.replace(/^-----BEGIN[^\n]*-----|-----END[^\n]*-----$/gm, "")
+        .replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
       if (!raw) throw new Error("کد Base64 خالی است.");
       if (!/^[A-Za-z0-9+/]*={0,2}$/.test(raw) || raw.length % 4 === 1) {
         throw new Error("ساختار کد Base64 معتبر نیست.");
