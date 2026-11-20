@@ -83,6 +83,23 @@
       overflow-wrap: anywhere;
     }
     @media (max-width: 480px) { body { padding: 16px; } .gallery { grid-template-columns: 1fr; } }
+  
+    .base64-tool {
+      max-width: 900px; margin: 0 auto 28px; padding: 18px;
+      background: #fff; border: 1px solid #dbe4f0; border-radius: 16px;
+      box-shadow: 0 3px 14px #1822300b;
+    }
+    .base64-tool h2 { margin: 0 0 8px; font-size: 19px; }
+    .base64-tool p { color: #64748b; font-size: 13px; line-height: 1.8; margin: 0 0 12px; }
+    .base64-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .base64-tool input[type=file] { max-width: 100%; padding: 9px; background: #f8fafc; border: 1px solid #dbe3ee; border-radius: 8px; }
+    #base64Text { width: 100%; min-height: 120px; margin: 12px 0; padding: 12px; resize: vertical; direction: ltr; text-align: left; font: 12px/1.6 Consolas, monospace; border: 1px solid #dbe3ee; border-radius: 9px; }
+    .base64-tool button { border: 0; border-radius: 8px; padding: 10px 16px; background: #2457bd; color: white; cursor: pointer; font: inherit; }
+    .base64-tool button:hover { background: #19479f; }
+    #base64Status { margin: 10px 0; font-size: 13px; overflow-wrap: anywhere; }
+    #base64PreviewWrap { display: none; margin-top: 14px; padding: 12px; background: #f1f5f9; border-radius: 10px; text-align: center; }
+    #base64Preview { max-width: 100%; max-height: 560px; object-fit: contain; }
+
   </style>
 </head>
 <body>
@@ -90,6 +107,19 @@
     <h1>گالری تصاویر</h1>
     <p id="status" role="status" aria-live="polite">در حال دریافت فهرست تصاویر…</p>
   </header>
+  
+  <section class="base64-tool" aria-labelledby="base64Heading">
+    <h2 id="base64Heading">نمایش تصویر از کد Base64</h2>
+    <p>فایل متنی حاوی Base64 را انتخاب کن یا کد را در کادر زیر قرار بده. پردازش در همین مرورگر انجام می‌شود و فایل به سرور ارسال نمی‌شود.</p>
+    <div class="base64-controls">
+      <input id="base64File" type="file" accept=".txt,.b64,.base64,text/plain">
+      <button id="showBase64Image" type="button">نمایش تصویر</button>
+    </div>
+    <textarea id="base64Text" spellcheck="false" placeholder="کد Base64 را اینجا قرار بده…"></textarea>
+    <p id="base64Status" role="status" aria-live="polite">هنوز فایلی انتخاب نشده است.</p>
+    <div id="base64PreviewWrap"><img id="base64Preview" alt="پیش‌نمایش تصویر استخراج‌شده از Base64"></div>
+  </section>
+
   <main id="gallery" class="gallery"></main>
 
   <script>
@@ -276,6 +306,71 @@
     refreshButton.style.cssText = "display:block;margin:14px auto 0;padding:9px 16px;border:0;border-radius:8px;background:#e8efff;color:#234ca5;cursor:pointer;font:inherit";
     refreshButton.addEventListener("click", () => refreshGallery(true));
     document.querySelector("header").appendChild(refreshButton);
+
+
+    // Base64 text viewer: all decoding happens locally in the browser.
+    const base64FileInput = document.getElementById("base64File");
+    const base64TextInput = document.getElementById("base64Text");
+    const base64Status = document.getElementById("base64Status");
+    const base64Preview = document.getElementById("base64Preview");
+    const base64PreviewWrap = document.getElementById("base64PreviewWrap");
+    let base64ObjectUrl = null;
+
+    base64FileInput.addEventListener("change", async () => {
+      const file = base64FileInput.files && base64FileInput.files[0];
+      if (!file) return;
+      try {
+        base64TextInput.value = await file.text();
+        base64Status.textContent = "فایل خوانده شد: " + file.name + " — برای نمایش روی دکمه بزن.";
+        base64PreviewWrap.style.display = "none";
+      } catch (error) {
+        base64Status.textContent = "خواندن فایل ناموفق بود: " + error.message;
+      }
+    });
+
+    document.getElementById("showBase64Image").addEventListener("click", () => {
+      try {
+        let raw = base64TextInput.value.trim().replace(/^\uFEFF/, "");
+        const dataUrlMatch = raw.match(/^data:image\/(png|jpeg|jpg|gif|webp|bmp|avif);base64,([\s\S]*)$/i);
+        if (dataUrlMatch) raw = dataUrlMatch[2];
+        raw = raw.replace(/^-----BEGIN[^\n]*-----|-----END[^\n]*-----$/gm, "")
+          .replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
+        if (!raw) throw new Error("کد Base64 خالی است.");
+        if (!/^[A-Za-z0-9+/]*={0,2}$/.test(raw) || raw.length % 4 === 1) {
+          throw new Error("ساختار کد Base64 معتبر نیست.");
+        }
+        raw += "=".repeat((4 - raw.length % 4) % 4);
+        const binary = atob(raw);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+        let mime = "";
+        if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) mime = "image/png";
+        else if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) mime = "image/jpeg";
+        else if (binary.startsWith("GIF87a") || binary.startsWith("GIF89a")) mime = "image/gif";
+        else if (binary.startsWith("RIFF") && binary.slice(8, 12) === "WEBP") mime = "image/webp";
+        else if (bytes[0] === 0x42 && bytes[1] === 0x4d) mime = "image/bmp";
+        else if (bytes.length > 12 && binary.slice(4, 12).includes("ftypavif")) mime = "image/avif";
+        else throw new Error("نوع تصویر پشتیبانی نمی‌شود یا فایل، Base64 یک تصویر معتبر نیست.");
+
+        const blob = new Blob([bytes], { type: mime });
+        if (base64ObjectUrl) URL.revokeObjectURL(base64ObjectUrl);
+        base64ObjectUrl = URL.createObjectURL(blob);
+        base64Preview.onload = () => {
+          base64PreviewWrap.style.display = "block";
+          base64Status.textContent = "تصویر با موفقیت نمایش داده شد (" + mime + "، " +
+            base64Preview.naturalWidth + " × " + base64Preview.naturalHeight + ").";
+        };
+        base64Preview.onerror = () => {
+          base64PreviewWrap.style.display = "none";
+          base64Status.textContent = "داده رمزگشایی شد، اما مرورگر نتوانست تصویر را نمایش دهد.";
+        };
+        base64Preview.src = base64ObjectUrl;
+      } catch (error) {
+        base64PreviewWrap.style.display = "none";
+        base64Status.textContent = error.message || "خطا در خواندن Base64.";
+      }
+    });
 
     loadGallery();
   </script>
